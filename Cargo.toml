@@ -1,0 +1,8 @@
+[package]
+name = "csrtool"
+version = "0.1.0"
+authors = ["tathanhdinh <tathanhdinh@gmail.com>"]
+
+[dependencies]
+capstone = { path = "/home/tathanhdinh/Public/Github/capstone-rs", version = "*" }
+clap = { git = "https://github.com/kbknapp/clap-rs.git" }
