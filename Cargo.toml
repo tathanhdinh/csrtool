@@ -5,4 +5,6 @@ authors = ["tathanhdinh <tathanhdinh@gmail.com>"]
 
 [dependencies]
 capstone = { path = "/home/tathanhdinh/Public/Github/capstone-rs", version = "*" }
-clap = { git = "https://github.com/kbknapp/clap-rs.git" }
+unicorn = { git = "https://github.com/ekse/unicorn-rs.git", version = "*" }
+clap = { git = "https://github.com/kbknapp/clap-rs.git", version = "*" }
+
