@@ -9,4 +9,6 @@ capstone = { git = "https://github.com/richo/capstone-rs.git", version = "*" }
 unicorn = { git = "https://github.com/ekse/unicorn-rs.git", version = "*" }
 clap = { git = "https://github.com/kbknapp/clap-rs.git", version = "*" }
 prettytable-rs = { git = "https://github.com/phsym/prettytable-rs.git", version = "*" }
+num = { git = "https://github.com/rust-num/num.git", version = "*" }
+xmas-elf = { git = "https://github.com/nrc/xmas-elf.git", version = "*" }
 

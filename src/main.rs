@@ -4,6 +4,8 @@ extern crate capstone;
 
 #[macro_use] extern crate prettytable;
 
+extern crate num;
+
 arg_enum!{
     #[allow(non_camel_case_types)]
     enum AddressingModes {
@@ -51,7 +53,7 @@ fn disassemble_buffer(arch: CsArch, mode: CsMode, buffer: &[u8], base_address: u
 
     display_instructions(&insns, buffer, verbose);
 
-    println!("(buffer has {} bytes, stop disassembling after {} bytes, get {} instructions)", buffer.len(), examined_bytes, insns.len());
+    println!("({} instructions, {}/{} bytes disassembled)", insns.len(), examined_bytes, buffer.len());
 
     // use prettytable::Table;
     // use prettytable::format;
@@ -81,6 +83,31 @@ fn opcode_as_string(buffer: &[u8]) -> String {
     }
     opcode.pop();
     opcode
+}
+
+use clap::Error;
+fn parse_value_from_string<T: std::str::FromStr + num::traits::Num>(input: &str) -> T {
+    let report_error = |_| Error::value_validation_auto(format!("The argument '{}' isn't a valid value", input)).exit();
+
+    if input.len() > 2 {
+        // let base_address_str_prefix = base_address_str[..2];
+        let (input_prefix, input_value) = input.split_at(2);
+
+        match input_prefix {
+            "0x" => { T::from_str_radix(input_value, 0x10)
+                      .unwrap_or_else(report_error) },
+            "0o" => { T::from_str_radix(input_value, 0x8)
+                      .unwrap_or_else(report_error) },
+            "0b" => { T::from_str_radix(input_value, 0x2)
+                      .unwrap_or_else(report_error) }
+            // _ => { input.parse::<T>()
+            //        .unwrap_or_else(report_error) }
+            _ => { T::from_str_radix(input, 0xa).unwrap_or_else(report_error) }
+        }
+    } else {
+        // input.parse::<T>().unwrap_or_else(report_error)
+        T::from_str_radix(input, 0xa).unwrap_or_else(report_error)
+    }
 }
 
 fn display_instructions(insns: &Instructions, buffer: &[u8], verbose: bool) {
@@ -164,7 +191,7 @@ fn main() {
              .short("l")
              .long("length")
              .takes_value(true)
-             .help("Number of disassemlet nopSledding = [| for _ in 0..7 -> (byte 0x90) |]bled bytes (or disassembling until EOF)")
+             .help("Number of disassembled bytes (or disassembling until EOF)")
              .required(false))
         .arg(clap::Arg::with_name("base address")
              .long("base")
@@ -174,7 +201,7 @@ fn main() {
              .required(false))
         .arg(clap::Arg::with_name("smc")
              .long("smc")
-             .help("Enable overlapped and self-modifying code analysis")
+             .help("Enables overlapped and self-modifying code analysis")
              .required(false))
         .arg(clap::Arg::with_name("file")
              .short("f")
@@ -187,13 +214,24 @@ fn main() {
              .short("s")
              .long("string")
              .help("Disassembled input string (accept all hex separators, even mixed)")
-             .takes_value(true).required(true)
-             .conflicts_with_all(&["file", "file offset"]))
+             .takes_value(true)
+             .conflicts_with_all(&["file", "file offset"])
+             .required(true))
         .arg(clap::Arg::with_name("verbose")
              .short("v")
              .long("verbose")
-             .help("Display instruction detail")
+             .help("Shows instruction detail")
              .takes_value(false)
+             .required(false))
+        .arg(clap::Arg::with_name("auto")
+             .long("auto")
+             .help("Disassembles file automatically")
+             .conflicts_with_all(&["file offset",
+                                   "string",
+                                   "length",
+                                   "base address"])
+             .takes_value(false)
+             .requires("file")
              .required(false))
         .get_matches();
 
@@ -218,8 +256,36 @@ fn main() {
                 Architectures::x86 => {
                     match disasm_syntax {
                         AssemblySyntax::intel => {
-                            let base_address = value_t!(matches.value_of("base address"), usize)
-                                .unwrap_or_else(|e| e.exit());
+                            // let base_address = value_t!(matches.value_of("base address"), usize)
+                            //     .unwrap_or_else(|e| e.exit());
+                            let base_address = match matches.value_of("base address") {
+                                Some(base_address_str) => {
+                                    parse_value_from_string::<usize>(base_address_str)
+                                    // let report_error = |_| clap::Error::value_validation_auto(format!("The argument '{}' isn't a valid value",
+                                    //                                                                   base_address_str)).exit();
+
+                                    // if base_address_str.len() > 2 {
+                                    //     // let base_address_str_prefix = base_address_str[..2];
+                                    //     let (base_address_str_prefix, base_addrress_str_value) = base_address_str.split_at(2);
+
+                                    //     match base_address_str_prefix {
+                                    //         "0x" => { usize::from_str_radix(base_addrress_str_value, 0x10)
+                                    //                   .unwrap_or_else(report_error) },
+                                    //         "0o" => { usize::from_str_radix(base_addrress_str_value, 0x8)
+                                    //                   .unwrap_or_else(report_error) },
+                                    //         "0b" => { usize::from_str_radix(base_addrress_str_value, 0x2)
+                                    //                   .unwrap_or_else(report_error) }
+                                    //         _ => { base_address_str.parse::<usize>()
+                                    //                .unwrap_or_else(report_error) }
+                                    //     }
+                                    // } else {
+                                    //     base_address_str.parse::<usize>().unwrap_or_else(report_error)
+                                    // }
+                                },
+                                None => {
+                                    clap::Error::argument_not_found_auto("base address").exit();
+                                }
+                            };
 
                             let is_verbose = matches.is_present("verbose");
 
